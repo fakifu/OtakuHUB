@@ -18,15 +18,21 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Récupération de l'IP du client pour éviter que Vercel ne se fasse bannir
+    const clientIp = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || '127.0.0.1';
+
     const response = await fetch('https://graphql.anilist.co', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        // Contournement de la protection Cloudflare : 
-        // 1. Spécifier un User-Agent personnalisé non générique
-        'User-Agent': 'OtakuHUB/1.0 (https://github.com/fakifu/OtakuHUB)',
-        // 2. Éviter d'envoyer l'Origin de Vercel qui est parfois blacklisté
+        // On déguise le User-Agent en navigateur très classique
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        // On fait croire à Cloudflare que la requête vient du site officiel d'AniList
+        'Origin': 'https://anilist.co',
+        'Referer': 'https://anilist.co/',
+        // On transmet l'IP de l'utilisateur final
+        'X-Forwarded-For': clientIp
       },
       body: JSON.stringify(req.body),
     });
