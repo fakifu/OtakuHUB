@@ -1,0 +1,432 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --- THEMES & TOKENS --- */
+/* 1. THÈME PAR DÉFAUT (DARK / NEXUS) */
+:root {
+  --bg-app: #000000;
+  --bg-surface: #050505;
+  --bg-card: #0A0A0A0A;
+  --bg-input: #050505;
+
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #475569;
+
+  --accent: #6366f1;
+  /* Indigo-500 */
+  --accent-hover: #4f46e5;
+  /* Indigo-600 */
+  --accent-soft: rgba(99, 102, 241, 0.1);
+
+  --success: #10b981;
+  /* Emerald-500 */
+  --danger: #ef4444;
+  /* Red-500 */
+  --warning: #f59e0b;
+  /* Amber-500 */
+
+  --border: rgba(255, 255, 255, 0.06);
+  --border: rgba(0, 0, 0, 0.3);
+  --border-active: rgba(99, 102, 241, 0.3);
+
+  /* GLASSMORPHISM - Dark sRGB */
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-bg-tinted: rgba(0, 0, 0, 0.75);
+  --glass-radiant-bg: rgba(10, 10, 10, 0.35);
+  --glass-border: rgba(0, 0, 0, 0.3);
+
+  /* SHAPES: Strict Radius System */
+  --radius-bigbox: 3rem;
+  --radius-card: 2rem;
+  --radius-list: 1.7rem;
+  --radius-field: 1rem;
+}
+
+/* 2. THÈME LIGHT (Base : pour les écrans PC standards sRGB) */
+.light {
+  --bg-app: #d9dee6;
+  /* Slate-300 - Contraste plus fort et profil sRGB sûr pour détacher le blanc */
+  --bg-surface: #ffffff;
+  /* Blanc pur */
+  --bg-card: #ffffff;
+  /* Blanc pur */
+  --bg-input: #f8fafc;
+
+  --text-main: #0f172a;
+  /* Slate-900 */
+  --text-muted: #334155;
+  /* Slate-700 */
+  --text-dim: #64748b;
+
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-soft: rgba(79, 70, 229, 0.08);
+
+  --border: rgba(15, 23, 42, 0.25);
+  /* Bordure plus visible pour garantir le contraste sur PC */
+  --border-active: rgba(79, 70, 229, 0.4);
+
+  /* GLASSMORPHISM - Light sRGB */
+  /* On baisse l'opacité du blanc pour laisser passer la lumière (de 0.6 à 0.25) */
+  --glass-bg: rgba(255, 255, 255, 0.25);
+  --glass-bg-tinted: rgba(255, 255, 255, 0.6);
+  --glass-radiant-bg: rgba(255, 255, 255, 0.18);
+  --glass-border: rgba(15, 23, 42, 0.15);
+}
+
+/* 3. OPTIMISATION POUR LES ÉCRANS P3 (iPhone, Mac, écrans haut de gamme) */
+@media (color-gamut: p3) {
+
+  /* DARK MODE (Optionnel : Rendre les accents plus vibrants) */
+  :root {
+    --accent: color(display-p3 0.35 0.38 0.98);
+    /* Indigo hyper-vibrant P3 */
+    --accent-hover: color(display-p3 0.30 0.25 0.92);
+
+    /* GLASSMORPHISM - Dark P3 */
+    --glass-bg: color(display-p3 1 1 1 / 0.04);
+    --glass-bg-tinted: color(display-p3 0 0 0 / 0.75);
+    --glass-radiant-bg: color(display-p3 0.04 0.04 0.04 / 0.35);
+    --glass-border: color(display-p3 0 0 0 / 0.35);
+    --border: color(display-p3 0 0 0 / 0.35);
+  }
+
+  /* LIGHT MODE (Restauration des couleurs douces de l'iPhone avec des pures P3) */
+  .light {
+    /* Le #f1f5f9 passait parfaitement sur iPhone car l'écran est très bien calibré */
+    --bg-app: color(display-p3 0.945 0.961 0.976);
+    /* Équivalent P3 exact de #f1f5f9 (slate-100) */
+    --accent: color(display-p3 0.28 0.25 0.94);
+    /* Indigo éclatant P3 */
+    --accent-hover: color(display-p3 0.23 0.18 0.82);
+    --border: rgba(15, 23, 42, 0.16);
+    /* On peut alléger les bordures car le contraste naturel de l'iPhone suffit */
+
+    /* TEXT COLORS - Light P3 */
+    --text-main: color(display-p3 0.05 0.09 0.14);
+    /* Equivalent to slate-900 */
+    --text-muted: color(display-p3 0.35 0.40 0.47);
+    /* Equivalent to slate-500 */
+    --text-dim: color(display-p3 0.55 0.60 0.68);
+    /* Equivalent to slate-400 */
+
+    /* GLASSMORPHISM - Light P3 */
+    /* On baisse l'opacité du blanc P3 (de 0.7 à 0.3) */
+    --glass-bg: color(display-p3 1 1 1 / 0.3);
+    --glass-bg-tinted: color(display-p3 1 1 1 / 0.6);
+    --glass-radiant-bg: color(display-p3 1 1 1 / 0.25);
+    --glass-border: color(display-p3 0.06 0.09 0.16 / 0.12);
+  }
+}
+
+/* --- GLOBAL --- */
+body {
+  @apply bg-background text-foreground;
+  /* Utilise les nouveaux tokens */
+  overscroll-behavior-y: none;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Reset des inputs number */
+@layer base {
+
+  /* Empêche la sélection de texte et les menus contextuels iOS sur les éléments UI (PWA feel) */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html,
+  body {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* Désactive le drag natif sur les images et les liens pour éviter les "soulèvements" accidentels */
+  img,
+  a {
+    -webkit-user-drag: none;
+  }
+
+  /* Autorise la sélection et l'édition uniquement dans les champs de texte */
+  input,
+  textarea,
+  .selectable,
+  [contenteditable='true'] {
+    user-select: text;
+    -webkit-user-select: text;
+    -webkit-touch-callout: default;
+  }
+
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
+/* --- UTILITIES (Helpers) --- */
+@layer utilities {
+
+  /* Scrollbar cachée */
+  .custom-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .custom-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* GLASSMORPHISM UTILITY */
+  .glass-panel {
+    background-color: var(--glass-bg);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--glass-border);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+  }
+
+  /* TINTED GLASSMORPHISM UTILITY (Plus opaque pour des éléments isolés) */
+  .glass-panel-tinted {
+    background-color: var(--glass-bg-tinted);
+    backdrop-filter: blur(32px);
+    -webkit-backdrop-filter: blur(32px);
+    border: 1px solid var(--glass-border);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+  }
+
+  /* DEEP GLASSMORPHISM UTILITY (Pour les modales à fort contraste) */
+  .glass-panel-deep {
+    background-color: var(--glass-bg);
+    backdrop-filter: blur(64px);
+    -webkit-backdrop-filter: blur(64px);
+    border: 1px solid var(--glass-border);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+  }
+
+  /* RADIANT GLASSMORPHISM (Diffusion lumineuse, haute lisibilité) */
+  .glass-panel-radiant {
+    background-color: var(--glass-radiant-bg);
+    backdrop-filter: blur(48px);
+    -webkit-backdrop-filter: blur(48px);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08);
+  }
+
+
+
+  /* Utils pour décaler les animations des blobs */
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+
+  /* GLASSMORPHISM ROOT UTILITY */
+  .glass-panel {
+    background-color: var(--glass-bg);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--glass-border);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+  }
+
+  /* LIQUID GLASSMORPHISM (Premium, highly reflective) */
+  .glass-liquid {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.07) 100%);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+      inset 0 1px 1px 0 rgba(255, 255, 255, 0.15),
+      0 4px 16px -4px rgba(0, 0, 0, 0.25);
+    /* Optimisation GPU iOS/PWA */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    contain: paint;
+  }
+
+  /* LIQUID GLASS SOLID (Opaque, high-performance for animations) */
+  .glass-liquid-solid {
+    background: linear-gradient(135deg, rgba(30, 30, 30, 0.95) 0%, rgba(20, 20, 20, 0.95) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+      inset 0 1px 1px 0 rgba(255, 255, 255, 0.15),
+      0 4px 16px -4px rgba(0, 0, 0, 0.25);
+    /* Optimisation GPU iOS/PWA */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    contain: paint;
+  }
+
+  /* LIQUID GLASS LITE (Adaptive blur for long lists) */
+  .glass-liquid-lite {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.07) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+      inset 0 1px 1px 0 rgba(255, 255, 255, 0.15),
+      0 4px 16px -4px rgba(0, 0, 0, 0.25);
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    contain: paint;
+  }
+
+  @media (hover: none) {
+
+    /* Mobile/Touch: very light blur to save GPU */
+    .glass-liquid-lite {
+      backdrop-filter: blur(4px) saturate(140%);
+      -webkit-backdrop-filter: blur(4px) saturate(140%);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.09) 100%);
+    }
+  }
+
+  @media (hover: hover) {
+
+    /* Desktop: full blur */
+    .glass-liquid-lite {
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+    }
+  }
+
+  /* Light mode override for liquid glass */
+  .light .glass-liquid {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.3) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow:
+      inset 0 1px 2px 0 rgba(255, 255, 255, 0.5),
+      0 6px 16px -6px rgba(0, 0, 0, 0.08);
+  }
+
+  /* Light mode override for liquid glass lite (Used by ListCards) */
+  .light .glass-liquid-lite {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.3) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow:
+      inset 0 1px 2px 0 rgba(255, 255, 255, 0.5),
+      0 6px 16px -6px rgba(0, 0, 0, 0.08);
+    /* Soft shadow for light mode */
+  }
+
+  /* Light mode override for solid liquid glass */
+  .light .glass-liquid-solid {
+    background: linear-gradient(135deg, rgba(250, 250, 250, 0.95) 0%, rgba(240, 240, 240, 0.95) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow:
+      inset 0 1px 2px 0 rgba(255, 255, 255, 0.5),
+      0 6px 16px -6px rgba(0, 0, 0, 0.08);
+  }
+}
+
+/* --- COMPONENTS (Boutons & États) --- */
+@layer components {
+
+  /* Feedback universel au clic/touch (Mobile & Desktop) */
+  .active-scale:active {
+    @apply scale-[0.97] opacity-90 transition-transform duration-75;
+  }
+
+  /* BOUTONS - État de base */
+  .btn-primary {
+    @apply bg-indigo-600 text-white shadow-lg shadow-indigo-500/25;
+  }
+
+  .btn-success {
+    @apply bg-emerald-600 text-white shadow-lg shadow-emerald-500/25;
+  }
+
+  .btn-danger {
+    @apply bg-rose-600 text-white shadow-lg shadow-rose-500/25;
+  }
+
+  .btn-outline {
+    @apply border-2 border-border text-foreground bg-transparent;
+  }
+
+  .btn-ghost {
+    @apply text-muted bg-transparent;
+  }
+
+  /* CARDS - État de base */
+  .card-interactive {
+    @apply transition-colors;
+  }
+
+  .list-item-interactive {
+    @apply transition-colors;
+  }
+
+  /* HOVER uniquement pour les dispositifs avec souris */
+  @media (hover: hover) {
+    .btn-primary:hover {
+      @apply bg-indigo-500;
+    }
+
+    .btn-success:hover {
+      @apply bg-emerald-500;
+    }
+
+    .btn-danger:hover {
+      @apply bg-rose-500;
+    }
+
+    .btn-outline:hover {
+      @apply bg-surface border-border;
+    }
+
+    .btn-ghost:hover {
+      @apply text-foreground bg-surface;
+    }
+
+    .card-interactive:hover {
+      @apply border-accent-soft bg-white/[0.02];
+    }
+
+    .list-item-interactive:hover {
+      @apply border-accent-soft bg-white/[0.02];
+    }
+
+    .category-card:hover {
+      @apply opacity-80;
+    }
+  }
+
+  /* ACTIVE uniquement pour le retour tactile/clic */
+  .btn-primary:active,
+  .btn-success:active,
+  .btn-danger:active,
+  .card-interactive:active,
+  .list-item-interactive:active {
+    @apply scale-[0.98] opacity-80;
+  }
+}
+
+/* OVERLAY LANDSCAPE MOBILE */
+.landscape-overlay {
+  display: none;
+}
+
+/* Uniquement sur mobile (hauteur < 500px) en paysage pour cibler les smartphones et exclure les tablettes */
+@media screen and (max-height: 500px) and (orientation: landscape) {
+  .landscape-overlay {
+    display: flex !important;
+    position: fixed;
+    inset: 0;
+    z-index: 999999;
+    background-color: var(--bg-app);
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+
+  /* Désactiver le spin permanent, utiliser plutôt l'animation par défaut de nexus */
+  .animate-spin-slow {
+    animation: spin 3s linear infinite;
+  }
+}
