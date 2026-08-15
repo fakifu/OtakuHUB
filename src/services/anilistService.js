@@ -5,7 +5,9 @@
  * Rate limit: 90 requêtes/minute
  */
 
-const ANILIST_ENDPOINT = 'https://graphql.anilist.co';
+const ANILIST_ENDPOINT = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
+  ? '/api/anilist'
+  : 'https://graphql.anilist.co';
 
 // ── Fragments réutilisables ──────────────────────────────────────────────────
 const MEDIA_FIELDS = `
