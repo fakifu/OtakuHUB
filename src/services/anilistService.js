@@ -6,7 +6,7 @@
  */
 
 const ANILIST_ENDPOINT = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
-  ? '/api/anilist'
+  ? 'https://corsproxy.io/?https://graphql.anilist.co'
   : 'https://graphql.anilist.co';
 
 // ── Fragments réutilisables ──────────────────────────────────────────────────
