@@ -175,6 +175,7 @@ export async function fetchAniList(query, variables = {}) {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
+      mode: 'cors',
       body: JSON.stringify({ query, variables }),
     });
 
