@@ -48,23 +48,25 @@ const SOURCE_LABELS = {
   OTHER: 'Autre',
 };
 
-export default function AnimeDetailPage({ animeId: propAnimeId, onBack, onSelectAnime }) {
+export default function AnimeDetailPage({ animeId: propAnimeId, animeIdProp, onBack: propOnBack, onBackProp, onSelectAnime }) {
   const { id: paramId } = useParams();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { library, addToLibrary, updateEntry, removeFromLibrary } = useLibrary();
 
-  const animeIdNum = Number(propAnimeId || paramId);
-  const libraryEntry = library.find(e => e.animeId === animeIdNum);
+  const idRaw = propAnimeId || animeIdProp || paramId;
+  const animeIdNum = Number(idRaw);
+  const libraryEntry = library.find(e => e.animeId === animeIdNum || String(e.animeId) === String(idRaw));
 
   const [animeData, setAnimeData] = useState(libraryEntry?.anime || null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!libraryEntry?.anime);
   const [error, setError] = useState(null);
   const [isEditingNotes, setIsEditingNotes] = useState(false);
 
   const handleBack = () => {
-    if (onBack) {
-      onBack();
+    const cb = propOnBack || onBackProp;
+    if (cb) {
+      cb();
     } else {
       navigate(-1);
     }
@@ -74,14 +76,22 @@ export default function AnimeDetailPage({ animeId: propAnimeId, onBack, onSelect
   useEffect(() => {
     let cancelled = false;
     async function fetchDetails() {
-      setIsLoading(true);
+      if (!animeIdNum || isNaN(animeIdNum)) {
+        setIsLoading(false);
+        return;
+      }
+      if (!libraryEntry?.anime) {
+        setIsLoading(true);
+      }
       try {
         const fetched = await getAnimeById(animeIdNum);
         if (!cancelled && fetched) {
           setAnimeData(fetched);
         }
       } catch (err) {
-        if (!cancelled) setError(err.message || 'Erreur de chargement');
+        if (!cancelled && !libraryEntry?.anime) {
+          setError(err.message || 'Erreur de chargement');
+        }
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -172,7 +182,7 @@ export default function AnimeDetailPage({ animeId: propAnimeId, onBack, onSelect
 
   if (isLoading && !animeData) {
     return (
-      <div className="min-h-screen bg-background text-foreground flex items-center justify-center pt-12 pb-24">
+      <div className="fixed inset-0 z-50 w-full h-[100dvh] bg-background text-foreground flex items-center justify-center overscroll-none touch-none select-none overflow-hidden">
         <div className="space-y-4 text-center">
           <RefreshCw size={28} className="animate-spin text-accent mx-auto" />
           <p className="text-xs text-muted font-bold uppercase tracking-widest">{t('common.loading')}</p>
@@ -562,7 +572,7 @@ export default function AnimeDetailPage({ animeId: propAnimeId, onBack, onSelect
           </div>
         )}
 
-        {/* ── NOTES PERSONNELLES (SAISIE TRANSPARENTE EN LIGNE IDENTIQUE AU SYNOPSIS) ── */}
+        {/* ── NOTES PERSONNELLES (SAISIE TRANSPARENTE EN LIGNE ET CARTE EXPANDABLE) ── */}
         {isSaved && (
           <div className="glass-liquid rounded-card transition-all hover:border-accent/30 p-5 space-y-3 shadow-xl">
             <div className="flex items-center justify-between">
@@ -571,17 +581,17 @@ export default function AnimeDetailPage({ animeId: propAnimeId, onBack, onSelect
                 {t('detail.personal_notes')}
               </h3>
               <span className="text-[10px] font-semibold text-muted">
-                {notesText.length} / 500
+                {notesText.length} / 1500
               </span>
             </div>
 
             <textarea
-              rows={3}
-              maxLength={500}
+              rows={Math.max(5, Math.ceil((notesText || '').length / 55))}
+              maxLength={1500}
               value={notesText}
               onChange={(e) => handleNotesChange(e.target.value)}
               placeholder={t('detail.notes_placeholder')}
-              className="w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 p-0 text-sm text-foreground/90 leading-relaxed font-normal resize-none placeholder:text-muted/50 placeholder:italic transition-colors"
+              className="w-full min-h-[120px] max-h-[350px] bg-transparent border-none outline-none focus:outline-none focus:ring-0 p-0 text-sm text-foreground/90 leading-relaxed font-normal resize-y placeholder:text-muted/50 placeholder:italic transition-colors overflow-y-auto scrollbar-thin"
             />
           </div>
         )}

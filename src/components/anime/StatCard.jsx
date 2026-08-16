@@ -44,6 +44,7 @@ export default function StatCard({
   color = 'indigo',
   delay = 0,
   className = '',
+  onClick,
 }) {
   const palette = COLOR_MAP[color] || COLOR_MAP.indigo;
 
@@ -53,7 +54,8 @@ export default function StatCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: 'easeOut', delay }}
       whileHover={{ scale: 1.02 }}
-      className={`glass-liquid rounded-card p-5 flex flex-col gap-4 cursor-default relative overflow-hidden transition-transform ${className}`}
+      onClick={onClick}
+      className={`glass-liquid rounded-card aspect-square p-4 sm:p-5 flex flex-col justify-between relative overflow-hidden transition-transform ${onClick ? 'cursor-pointer active:scale-95' : 'cursor-default'} ${className}`}
       style={{ willChange: 'transform' }}
     >
 
@@ -65,21 +67,21 @@ export default function StatCard({
 
       {/* Icon */}
       {Icon && (
-        <div className={`relative w-10 h-10 rounded-list ${palette.bg} flex items-center justify-center shrink-0`}>
-          <Icon size={20} className={palette.text} strokeWidth={2.5} />
+        <div className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-3xl ${palette.bg} flex items-center justify-center shrink-0`}>
+          <Icon size={28} className={palette.text} strokeWidth={2.5} />
         </div>
       )}
 
       {/* Values */}
-      <div className="flex flex-col gap-1">
-        <span className="text-2xl font-black text-foreground leading-none tracking-tight">
+      <div className="flex flex-col gap-0.5 min-w-0">
+        <span className="text-xl sm:text-2xl font-black text-foreground leading-none tracking-tight truncate">
           {value ?? '—'}
         </span>
-        <span className="text-[10px] font-bold text-muted uppercase tracking-widest mt-0.5">
+        <span className="text-[10px] font-bold text-muted uppercase tracking-wider truncate mt-0.5">
           {label}
         </span>
         {subValue && (
-          <span className="text-xs text-muted/60 font-medium mt-0.5">{subValue}</span>
+          <span className="text-[10px] sm:text-[11px] text-muted/60 font-medium truncate mt-0.5">{subValue}</span>
         )}
       </div>
     </motion.div>

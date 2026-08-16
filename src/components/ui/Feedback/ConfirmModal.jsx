@@ -39,8 +39,8 @@ export default function ConfirmModal({ isOpen, onClose, onConfirm, title, messag
         </div>
 
         <div>
-          <h3 className={`${UI.text.h2} text-foreground mb-2 uppercase tracking-widest`}>{title}</h3>
-          <p className="text-muted text-sm leading-relaxed px-4">{message}</p>
+          <h3 className="font-bold text-base text-foreground mb-1">{title}</h3>
+          <p className="text-muted text-xs leading-relaxed px-2">{message}</p>
         </div>
 
       </div>

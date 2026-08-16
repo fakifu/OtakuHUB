@@ -65,20 +65,7 @@ export default function HeroBanner({ anime, onNextAnime }) {
         <div className="w-full h-[60vh] bg-transparent" />
       )}
 
-      {/* Bouton pour changer d'animé (RefreshCw) en haut à droite */}
-      {onNextAnime && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onNextAnime();
-          }}
-          className="fixed top-[calc(4rem+env(safe-area-inset-top,0px))] right-4 z-[999] w-10 h-10 rounded-full glass-panel flex items-center justify-center text-foreground hover:text-accent shadow-xl border border-white/20 active:scale-95 active:rotate-180 transition-all"
-          title="Changer d'animé à la une"
-        >
-          <RefreshCw size={18} className="text-cyan-400" />
-        </button>
-      )}
+
 
       {/* Titre Hiérarchisé (Police N°2 Unbounded + 3 Lignes max + Majuscule 1er mot Romaji) */}
       <div

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 
 import AnimeGridCard from '../components/anime/AnimeGridCard';
+import FilterPanel from '../components/anime/FilterPanel';
 import AnimeDetailPage from './AnimeDetailPage';
 import Pill from '../components/ui/Pill';
 import { useLibrary } from '../context/LibraryContext';
@@ -68,16 +69,9 @@ export default function LibraryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeStatus, setActiveStatus] = useState(null);
   const [sortKey, setSortKey] = useState('addedAt');
-  const [selectedEntry, setSelectedEntry] = useState(null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [isSortOpen, setIsSortOpen] = useState(false);
-
-  const SORT_OPTIONS = [
-    { value: 'addedAt', label: t('library.sort_updated'), icon: Clock },
-    { value: 'rating', label: t('library.my_rating'), icon: Star },
-    { value: 'title', label: t('library.sort_title'), icon: BookOpen },
-    { value: 'progress', label: t('library.sort_progress'), icon: CheckCircle },
-  ];
+  const [selectedGenre, setSelectedGenre] = useState(null);
+  const [selectedFormat, setSelectedFormat] = useState('ALL');
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
 
   const STATUS_FILTERS = [
     { value: null, label: t('library.all'), icon: Grid3X3 },
@@ -100,11 +94,27 @@ export default function LibraryPage() {
       result = result.filter(e => e.status === activeStatus);
     }
 
+    // Filtre genre
+    if (selectedGenre) {
+      result = result.filter(e => {
+        const itemGenres = e.genres || e.anime?.genres || [];
+        return itemGenres.includes(selectedGenre);
+      });
+    }
+
+    // Filtre format
+    if (selectedFormat && selectedFormat !== 'ALL') {
+      result = result.filter(e => {
+        const fmt = e.format || e.anime?.format || 'TV';
+        return fmt === selectedFormat;
+      });
+    }
+
     // Tri
     result = sortLibraryBy(result, sortKey);
 
     return result;
-  }, [library, searchQuery, activeStatus, sortKey]);
+  }, [library, searchQuery, activeStatus, selectedGenre, selectedFormat, sortKey]);
 
   const [selectedAnimeId, setSelectedAnimeId] = useState(null);
   const listScrollTopRef = React.useRef(0);
@@ -141,41 +151,58 @@ export default function LibraryPage() {
     });
   };
 
+  // Rendu de la fiche détaillée si un animé est sélectionné
   if (selectedAnimeId) {
     return (
       <AnimeDetailPage
         animeId={selectedAnimeId}
         onBack={handleBackFromDetail}
-        onSelectAnime={setSelectedAnimeId}
       />
     );
   }
 
-  const currentSortLabel = SORT_OPTIONS.find(o => o.value === sortKey)?.label || t('library.sort_by');
+  const hasActiveFilters = Boolean(searchQuery || activeStatus || selectedGenre || (selectedFormat && selectedFormat !== 'ALL'));
 
   return (
-    <div id="library-page-root" className="space-y-3 pb-8 px-4">
-      {/* ── BARRE DE RECHERCHE ABSOLUMENT COLLÉE EN HAUT (0PX PADDING) ── */}
-      <div className="sticky top-0 z-30 pt-[env(safe-area-inset-top,0px)] pb-2">
-        <div className="relative">
-          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-muted">
-            <Search size={16} />
+    <div id="library-page-root" className="px-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-32 space-y-5 max-w-7xl mx-auto">
+      {/* ── BARRE DE RECHERCHE ET BOUTON FILTRE ── */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-muted">
+              <Search size={16} />
+            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder={t('search.search_in_library')}
+              className="w-full glass-liquid rounded-[1.4rem] py-3 pl-10 pr-10 text-sm text-foreground focus:outline-none placeholder:text-muted shadow-lg"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-full bg-white/10 text-muted cursor-pointer"
+              >
+                <X size={13} />
+              </button>
+            )}
           </div>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder={t('search.search_in_library')}
-            className="w-full glass-liquid rounded-[1.4rem] py-3 pl-10 pr-10 text-sm text-foreground focus:outline-none placeholder:text-muted shadow-lg"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-full bg-white/10 text-muted"
-            >
-              <X size={13} />
-            </button>
-          )}
+
+          {/* BOUTON FILTRE SLIDE-OVER */}
+          <button
+            type="button"
+            onClick={() => setIsFilterPanelOpen(true)}
+            className={`h-11 px-3.5 rounded-[1.4rem] glass-liquid flex items-center justify-center gap-2 text-xs font-bold transition-all cursor-pointer ${
+              selectedGenre || (selectedFormat && selectedFormat !== 'ALL') || sortKey !== 'addedAt'
+                ? 'border-accent text-accent shadow-lg shadow-accent/20'
+                : 'text-foreground hover:border-accent/40'
+            }`}
+          >
+            <SlidersHorizontal size={16} className={selectedGenre || (selectedFormat && selectedFormat !== 'ALL') ? 'text-accent' : 'text-muted'} />
+            <span className="hidden sm:inline">Filtres</span>
+          </button>
         </div>
       </div>
 
@@ -192,67 +219,24 @@ export default function LibraryPage() {
               onClick={() => setActiveStatus(f.value)}
             />
           ))}
-
-          {/* Séparateur */}
-          <div className="w-px bg-border shrink-0 mx-1" />
-
-          {/* Bouton tri */}
-          <div className="relative">
-            <FilterPill
-              label={currentSortLabel}
-              icon={SlidersHorizontal}
-              isActive={isSortOpen}
-              onClick={() => setIsSortOpen(v => !v)}
-            />
-            <AnimatePresence>
-              {isSortOpen && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: -4 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                  transition={{ type: 'spring', damping: 28, stiffness: 400 }}
-                  className="absolute top-10 left-0 z-50 glass-panel-radiant rounded-[1.3rem] p-2 min-w-[160px] shadow-xl border border-border"
-                >
-                  {SORT_OPTIONS.map(opt => {
-                    const Icon = opt.icon;
-                    return (
-                      <button
-                        key={opt.value}
-                        onClick={() => { setSortKey(opt.value); setIsSortOpen(false); }}
-                        className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[1rem] text-sm transition-colors
-                          ${sortKey === opt.value ? 'bg-accent/20 text-accent font-bold' : 'text-muted hover:text-foreground hover:bg-white/5'}`}
-                      >
-                        <Icon size={14} />
-                        {opt.label}
-                      </button>
-                    );
-                  })}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
         </div>
       </div>
-
-      {/* Clic ailleurs ferme le dropdown tri */}
-      {isSortOpen && (
-        <div className="fixed inset-0 z-40" onClick={() => setIsSortOpen(false)} />
-      )}
 
       {/* ── CONTENU ── */}
       <div>
         {/* Compteur traduit i18n */}
         {displayedLibrary.length > 0 && (
-          <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-4 px-1">
-            {t(displayedLibrary.length > 1 ? 'library.anime_count_other' : 'library.anime_count_one', { count: displayedLibrary.length })}
-            {activeStatus ? ` · ${STATUS_FILTERS.find(f => f.value === activeStatus)?.label}` : ''}
-            {searchQuery ? ` · "${searchQuery}"` : ''}
+          <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-4 px-1 flex items-center gap-1.5 flex-wrap">
+            <span>{t(displayedLibrary.length > 1 ? 'library.anime_count_other' : 'library.anime_count_one', { count: displayedLibrary.length })}</span>
+            {activeStatus ? <span>· {STATUS_FILTERS.find(f => f.value === activeStatus)?.label}</span> : null}
+            {selectedGenre ? <span className="text-accent">· Genre: {selectedGenre}</span> : null}
+            {searchQuery ? <span>· "{searchQuery}"</span> : null}
           </p>
         )}
 
         {/* Empty state */}
         {displayedLibrary.length === 0 && (
-          <EmptyLibrary hasFilter={!!activeStatus || searchQuery.length > 0} />
+          <EmptyLibrary hasFilter={hasActiveFilters} />
         )}
 
         {/* Grille animés — 2 colonnes par écran */}
@@ -275,6 +259,24 @@ export default function LibraryPage() {
           })}
         </div>
       </div>
+
+      {/* PANNEAU DE FILTRES SLIDE-OVER NEXUSOS */}
+      <FilterPanel
+        isOpen={isFilterPanelOpen}
+        onClose={() => setIsFilterPanelOpen(false)}
+        sortKey={sortKey}
+        setSortKey={setSortKey}
+        selectedGenre={selectedGenre}
+        setSelectedGenre={setSelectedGenre}
+        selectedFormat={selectedFormat}
+        setSelectedFormat={setSelectedFormat}
+        totalResults={displayedLibrary.length}
+        onReset={() => {
+          setSortKey('addedAt');
+          setSelectedGenre(null);
+          setSelectedFormat('ALL');
+        }}
+      />
 
       <div className="h-8" />
     </div>

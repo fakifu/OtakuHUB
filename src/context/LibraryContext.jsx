@@ -1,9 +1,13 @@
-import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react';
+import { supabase } from '../supabaseClient';
+import { useAuth } from './AuthContext';
+import importedBackup from '../data/imported_backup.json';
 
 const STORAGE_KEY = 'otakuhub_library';
 
 // ── Actions ──────────────────────────────────────────────────────────────────
 const ACTIONS = {
+  SET_LIBRARY: 'SET_LIBRARY',
   ADD: 'ADD',
   UPDATE: 'UPDATE',
   REMOVE: 'REMOVE',
@@ -13,10 +17,12 @@ const ACTIONS = {
 // ── Reducer ──────────────────────────────────────────────────────────────────
 function libraryReducer(state, action) {
   switch (action.type) {
+    case ACTIONS.SET_LIBRARY:
+      return action.payload;
+
     case ACTIONS.ADD: {
       const exists = state.findIndex(e => e.animeId === action.payload.animeId);
       if (exists !== -1) {
-        // Upsert: mettre à jour l'entrée existante
         const updated = [...state];
         updated[exists] = {
           ...updated[exists],
@@ -50,8 +56,8 @@ function libraryReducer(state, action) {
 // ── Normalisation de la structure des entrées ────────────────────────────────
 function normalizeEntry(entry) {
   if (!entry) return null;
-  const anime = entry.anime || {
-    id: entry.animeId,
+  const anime = entry.anime || entry.anime_data || {
+    id: entry.animeId || entry.anime_id,
     title: typeof entry.title === 'string'
       ? { userPreferred: entry.title, romaji: entry.title }
       : entry.title,
@@ -59,40 +65,44 @@ function normalizeEntry(entry) {
       ? { extraLarge: entry.coverImage, large: entry.coverImage, medium: entry.coverImage }
       : entry.coverImage,
     bannerImage: entry.bannerImage || null,
-    episodes: entry.totalEpisodes || entry.episodes || 0,
+    episodes: entry.totalEpisodes || entry.episodes || entry.total_episodes || 0,
     genres: entry.genres || [],
     duration: entry.duration || 24,
   };
 
   return {
-    animeId: entry.animeId || anime.id,
+    animeId: entry.animeId || entry.anime_id || anime.id,
     title: typeof entry.title === 'string' ? entry.title : (anime.title?.userPreferred || anime.title?.romaji || 'Sans titre'),
-    coverImage: typeof entry.coverImage === 'string' ? entry.coverImage : (anime.coverImage?.extraLarge || anime.coverImage?.large || ''),
+    coverImage: typeof entry.coverImage === 'string' ? entry.coverImage : (anime.coverImage?.extraLarge || anime.coverImage?.large || entry.cover_image || ''),
     bannerImage: entry.bannerImage || anime.bannerImage || null,
     anime,
     status: entry.status || 'PLAN_TO_WATCH',
-    episodesWatched: Math.max(0, Number(entry.episodesWatched) || 0),
-    totalEpisodes: anime.episodes || entry.totalEpisodes || 0,
+    episodesWatched: Math.max(0, Number(entry.episodesWatched || entry.episodes_watched) || 0),
+    totalEpisodes: anime.episodes || entry.totalEpisodes || entry.total_episodes || 0,
     rating: entry.rating || 0,
     notes: entry.notes || '',
     genres: entry.genres || anime.genres || [],
     duration: entry.duration || anime.duration || 24,
-    addedAt: entry.addedAt || new Date().toISOString(),
-    updatedAt: entry.updatedAt || new Date().toISOString(),
+    addedAt: entry.addedAt || entry.added_at || new Date().toISOString(),
+    updatedAt: entry.updatedAt || entry.updated_at || new Date().toISOString(),
   };
 }
 
-// ── Chargement initial depuis LocalStorage ────────────────────────────────────
+// ── Chargement initial depuis LocalStorage (Fallback hors-ligne) ──────────────
 function loadFromStorage() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
+    if (!raw) {
+      return (importedBackup || []).map(normalizeEntry).filter(Boolean);
+    }
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      return (importedBackup || []).map(normalizeEntry).filter(Boolean);
+    }
     return parsed.map(normalizeEntry).filter(Boolean);
   } catch (err) {
     console.warn('OtakuHub: Erreur lecture LocalStorage', err);
-    return [];
+    return (importedBackup || []).map(normalizeEntry).filter(Boolean);
   }
 }
 
@@ -101,8 +111,57 @@ const LibraryContext = createContext(null);
 
 export function LibraryProvider({ children }) {
   const [library, dispatch] = useReducer(libraryReducer, [], loadFromStorage);
+  const { user } = useAuth();
+  
+  // Utilisation d'une ref pour éviter que les callbacks ne déclenchent la synchro en boucle
+  const isSyncingRef = useRef(false);
 
-  // Persistance automatique à chaque changement
+  // 1. Charger les données Supabase au démarrage si connecté
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchLibrary = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('otakuhub_library')
+          .select('*')
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+        
+        if (data) {
+          const normalizedData = data.map(normalizeEntry).filter(Boolean);
+          dispatch({ type: ACTIONS.SET_LIBRARY, payload: normalizedData });
+        }
+      } catch (err) {
+        console.error("❌ OtakuHub: Erreur chargement Supabase", err);
+      }
+    };
+
+    fetchLibrary();
+
+    // 2. Écouter les changements en temps réel (Cross-Device Sync)
+    const channel = supabase
+      .channel('library-sync')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'otakuhub_library',
+        filter: `user_id=eq.${user.id}`
+      }, (payload) => {
+        // Ignorer nos propres changements si on est en train de sync
+        if (isSyncingRef.current) return;
+        console.log("🔄 Supabase Realtime: Changement détecté", payload);
+        fetchLibrary(); // Re-fetch complet pour simplifier la cohérence
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
+  // Persistance automatique locale à chaque changement (Offline Support)
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(library));
@@ -111,9 +170,49 @@ export function LibraryProvider({ children }) {
     }
   }, [library]);
 
+  // ── Sync Helper ────────────────────────────────────────────────────────────
+  const syncToSupabase = async (entryData, isDelete = false) => {
+    if (!user) return;
+    isSyncingRef.current = true;
+    try {
+      if (isDelete) {
+        await supabase
+          .from('otakuhub_library')
+          .delete()
+          .eq('anime_id', entryData.animeId)
+          .eq('user_id', user.id);
+      } else {
+        const payload = {
+          user_id: user.id,
+          anime_id: entryData.animeId,
+          status: entryData.status,
+          episodes_watched: entryData.episodesWatched,
+          total_episodes: entryData.totalEpisodes,
+          rating: Math.round(Number(entryData.rating) || 0),
+          notes: entryData.notes || '',
+          anime_data: entryData.anime, // Stocke l'objet complet
+          updated_at: entryData.updatedAt
+        };
+        // Si c'est une création on garde added_at
+        if (entryData.addedAt) payload.added_at = entryData.addedAt;
+
+        const { error } = await supabase
+          .from('otakuhub_library')
+          .upsert(payload, { onConflict: 'user_id,anime_id' });
+
+        if (error) {
+          console.warn("OtakuHub: Supabase upsert notice", error);
+        }
+      }
+    } catch (err) {
+      console.error("❌ OtakuHub: Erreur synchronisation Supabase", err);
+    } finally {
+      setTimeout(() => { isSyncingRef.current = false; }, 500); // Debounce
+    }
+  };
+
   /**
    * Ajouter ou mettre à jour un animé dans la library.
-   * animeData: objet AniList (Media)
    */
   const addToLibrary = useCallback((animeData, status = 'PLAN_TO_WATCH', episodesWatched = 0) => {
     if (!animeData || !animeData.id) return;
@@ -131,7 +230,7 @@ export function LibraryProvider({ children }) {
       title: titleText,
       coverImage: coverUrl,
       bannerImage: animeData?.bannerImage || null,
-      anime: animeData, // Conservation de l'objet AniList complet
+      anime: animeData,
       status,
       episodesWatched: Math.max(0, Number(episodesWatched) || 0),
       totalEpisodes: animeData?.episodes || animeData?.totalEpisodes || 0,
@@ -143,34 +242,47 @@ export function LibraryProvider({ children }) {
       updatedAt: new Date().toISOString(),
     };
 
-    // Auto-COMPLETED si épisodes vus >= total
     if (entry.totalEpisodes > 0 && entry.episodesWatched >= entry.totalEpisodes) {
       entry.status = 'COMPLETED';
     }
 
     dispatch({ type: ACTIONS.ADD, payload: entry });
+    syncToSupabase(entry);
     console.log(`✅ OtakuHub: "${entry.title}" ajouté à la library (${status})`);
-  }, []);
+  }, [user]);
 
   /**
    * Mettre à jour des champs spécifiques d'une entrée.
    */
   const updateEntry = useCallback((animeId, updates) => {
+    // Si l'utilisateur marque l'animé comme terminé manuellement
+    if (updates.status === 'COMPLETED') {
+      const entry = library.find(e => e.animeId === animeId);
+      if (entry && entry.totalEpisodes > 0) {
+        updates.episodesWatched = entry.totalEpisodes;
+      }
+    }
+
     dispatch({ type: ACTIONS.UPDATE, animeId, updates });
-  }, []);
+    // On doit retrouver l'entrée complète pour l'envoyer à Supabase
+    setTimeout(() => {
+        const fullEntry = library.find(e => e.animeId === animeId);
+        if (fullEntry) {
+            syncToSupabase({ ...fullEntry, ...updates, updatedAt: new Date().toISOString() });
+        }
+    }, 0);
+  }, [library, user]);
 
   /**
    * Incrémenter les épisodes vus de +1.
-   * Passe automatiquement en COMPLETED si totalEpisodes atteint.
    */
   const incrementEpisode = useCallback((animeId) => {
     const entry = library.find(e => e.animeId === animeId);
     if (!entry) return;
 
     const newCount = (entry.episodesWatched || 0) + 1;
-    const updates = { episodesWatched: newCount };
+    const updates = { episodesWatched: newCount, updatedAt: new Date().toISOString() };
 
-    // Auto-completion
     if (entry.totalEpisodes > 0 && newCount >= entry.totalEpisodes) {
       updates.status = 'COMPLETED';
       updates.episodesWatched = entry.totalEpisodes;
@@ -178,15 +290,17 @@ export function LibraryProvider({ children }) {
     }
 
     dispatch({ type: ACTIONS.UPDATE, animeId, updates });
-  }, [library]);
+    syncToSupabase({ ...entry, ...updates });
+  }, [library, user]);
 
   /**
    * Supprimer un animé de la library.
    */
   const removeFromLibrary = useCallback((animeId) => {
     dispatch({ type: ACTIONS.REMOVE, animeId });
+    syncToSupabase({ animeId }, true);
     console.log(`🗑️ OtakuHub: Animé #${animeId} retiré de la library`);
-  }, []);
+  }, [user]);
 
   /**
    * Vérifier si un animé est dans la library.
@@ -208,9 +322,52 @@ export function LibraryProvider({ children }) {
   const clearLibrary = useCallback(() => {
     if (window.confirm('Vider toute ta library ? Cette action est irréversible.')) {
       dispatch({ type: ACTIONS.CLEAR });
-      console.log('🧹 OtakuHub: Library vidée');
+      // Optionnel: Vider aussi dans Supabase
+      if (user) {
+          supabase.from('otakuhub_library').delete().eq('user_id', user.id).then(() => {
+              console.log('🧹 OtakuHub: Supabase Library vidée');
+          });
+      }
     }
-  }, []);
+  }, [user]);
+
+  const importBackupData = useCallback(async (items) => {
+    if (!Array.isArray(items) || items.length === 0) return;
+    const normalizedList = items.map(normalizeEntry).filter(Boolean);
+    dispatch({ type: ACTIONS.SET_LIBRARY, payload: normalizedList });
+
+    if (user) {
+      isSyncingRef.current = true;
+      try {
+        const batchPayload = normalizedList.map(entryData => ({
+          user_id: user.id,
+          anime_id: entryData.animeId,
+          status: entryData.status,
+          episodes_watched: entryData.episodesWatched,
+          total_episodes: entryData.totalEpisodes,
+          rating: Math.round(Number(entryData.rating) || 0),
+          notes: entryData.notes || '',
+          anime_data: entryData.anime,
+          updated_at: entryData.updatedAt,
+          added_at: entryData.addedAt || new Date().toISOString()
+        }));
+
+        const { error } = await supabase
+          .from('otakuhub_library')
+          .upsert(batchPayload, { onConflict: 'user_id,anime_id' });
+
+        if (error) {
+          console.warn("OtakuHub: Supabase batch import notice", error);
+        } else {
+          console.log(`✨ Supabase: ${batchPayload.length} animés synchronisés en 1 seule requête !`);
+        }
+      } catch (err) {
+        console.error("❌ OtakuHub: Erreur batch import Supabase", err);
+      } finally {
+        setTimeout(() => { isSyncingRef.current = false; }, 500);
+      }
+    }
+  }, [user]);
 
   const value = {
     library,
@@ -221,6 +378,7 @@ export function LibraryProvider({ children }) {
     isInLibrary,
     getEntry,
     clearLibrary,
+    importBackupData,
   };
 
   return (
@@ -230,9 +388,6 @@ export function LibraryProvider({ children }) {
   );
 }
 
-/**
- * Hook useLibrary — doit être utilisé à l'intérieur de LibraryProvider.
- */
 export function useLibrary() {
   const ctx = useContext(LibraryContext);
   if (!ctx) {

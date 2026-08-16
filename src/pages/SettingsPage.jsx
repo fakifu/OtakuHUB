@@ -1,132 +1,101 @@
-import React from 'react';
-import { 
-  Palette, 
-  Globe, 
-  Moon, 
-  Sun, 
-  Monitor, 
-  ShieldCheck, 
-  Bell, 
-  Download,
-  Sliders
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Sun, Moon, Globe, User, LogOut, FolderInput, CheckCircle } from 'lucide-react';
+import { useTranslation } from '../hooks/useTranslation';
 import { useTheme } from '../hooks/useTheme';
-import { useTranslation } from '../hooks/useTranslation.jsx';
-import Switch from '../components/ui/Forms/Switch';
+import { useAuth } from '../context/AuthContext';
+import { useLibrary } from '../context/LibraryContext';
+import AuthForm from '../components/auth/AuthForm';
+import ConfirmModal from '../components/ui/Feedback/ConfirmModal';
+import ListCard from '../components/ui/Layout/ListCard';
 
 export default function SettingsPage() {
-  const { themePref, setTheme } = useTheme();
-  const { language, changeLanguage } = useTranslation();
+  const { t, language, changeLanguage } = useTranslation();
+  const { theme, toggleTheme } = useTheme();
+  const { user, signOut } = useAuth();
+  
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isSignOutConfirmOpen, setIsSignOutConfirmOpen] = useState(false);
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 },
+  };
+
+  const handleAccountClick = () => {
+    if (user) {
+      setIsSignOutConfirmOpen(true);
+    } else {
+      setIsAuthOpen(true);
+    }
+  };
+
+  const handleConfirmSignOut = async () => {
+    await signOut();
+  };
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-black tracking-tight text-foreground flex items-center gap-3">
-          <Sliders className="text-accent" size={32} />
-          Réglages
-        </h1>
-        <p className="text-muted text-sm">
-          Personnalisez le comportement et l'apparence de votre application.
-        </p>
-      </div>
+    <div className="px-4 py-8 max-w-lg mx-auto">
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="space-y-3"
+      >
+        {/* THÈME */}
+        <motion.div variants={itemVariants}>
+          <ListCard
+            variant="full"
+            title="Thème"
+            subtitle={theme === 'dark' ? 'Mode Sombre' : 'Mode Clair'}
+            leftIcon={theme === 'dark' ? Moon : Sun}
+            onClick={toggleTheme}
+            className="p-4"
+          />
+        </motion.div>
 
-      {/* Section Apparence & Thème */}
-      <div className="glass-liquid p-6 rounded-card space-y-6">
-        <div className="flex items-center gap-3 border-b border-border/40 pb-4">
-          <Palette className="text-indigo-400" size={24} />
-          <div>
-            <h2 className="text-base font-bold">Apparence & Thème</h2>
-            <p className="text-xs text-muted">Ajustez le mode visuel Liquid Glass (sRGB & Display-P3).</p>
-          </div>
-        </div>
+        {/* LANGUE */}
+        <motion.div variants={itemVariants}>
+          <ListCard
+            variant="full"
+            title="Langue"
+            subtitle={language === 'fr' ? 'Français' : 'English'}
+            leftIcon={Globe}
+            onClick={() => changeLanguage(language === 'fr' ? 'en' : 'fr')}
+            className="p-4"
+          />
+        </motion.div>
 
-        <div className="space-y-4">
-          <label className="text-xs font-semibold text-muted uppercase tracking-wider block">Mode d'affichage</label>
-          <div className="grid grid-cols-3 gap-3">
-            <button
-              onClick={() => setTheme('dark')}
-              className={`p-4 rounded-xl flex flex-col items-center gap-2 border transition-all ${
-                themePref === 'dark'
-                  ? 'bg-indigo-600/20 border-indigo-500 text-indigo-400 shadow-lg'
-                  : 'bg-surface/50 border-border text-muted hover:text-foreground'
-              }`}
-            >
-              <Moon size={22} />
-              <span className="text-xs font-bold">Sombre</span>
-            </button>
+        {/* COMPTE */}
+        <motion.div variants={itemVariants}>
+          <ListCard
+            variant="full"
+            title={user ? 'Se déconnecter' : 'Connexion Cloud'}
+            subtitle={user ? user.email : 'Sauvegarde et synchronisation'}
+            leftIcon={user ? LogOut : User}
+            onClick={handleAccountClick}
+            className="p-4"
+          />
+        </motion.div>
+      </motion.div>
 
-            <button
-              onClick={() => setTheme('light')}
-              className={`p-4 rounded-xl flex flex-col items-center gap-2 border transition-all ${
-                themePref === 'light'
-                  ? 'bg-indigo-600/20 border-indigo-500 text-indigo-400 shadow-lg'
-                  : 'bg-surface/50 border-border text-muted hover:text-foreground'
-              }`}
-            >
-              <Sun size={22} />
-              <span className="text-xs font-bold">Clair</span>
-            </button>
+      {/* Modale d'authentification */}
+      <AuthForm isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
 
-            <button
-              onClick={() => setTheme('system')}
-              className={`p-4 rounded-xl flex flex-col items-center gap-2 border transition-all ${
-                themePref === 'system'
-                  ? 'bg-indigo-600/20 border-indigo-500 text-indigo-400 shadow-lg'
-                  : 'bg-surface/50 border-border text-muted hover:text-foreground'
-              }`}
-            >
-              <Monitor size={22} />
-              <span className="text-xs font-bold">Système</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Section Langue */}
-      <div className="glass-liquid p-6 rounded-card space-y-6">
-        <div className="flex items-center gap-3 border-b border-border/40 pb-4">
-          <Globe className="text-emerald-400" size={24} />
-          <div>
-            <h2 className="text-base font-bold">Langue & Région</h2>
-            <p className="text-xs text-muted">Choisissez la langue d'affichage de l'interface.</p>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Langue de l'application</span>
-          <div className="w-48">
-            <Switch
-              size="sm"
-              color="foreground"
-              options={[
-                { label: 'Français', value: 'fr' },
-                { label: 'English', value: 'en' },
-              ]}
-              value={language || 'fr'}
-              onChange={(val) => changeLanguage && changeLanguage(val)}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Section Système & Sécurité */}
-      <div className="glass-liquid p-6 rounded-card space-y-6">
-        <div className="flex items-center gap-3 border-b border-border/40 pb-4">
-          <ShieldCheck className="text-sky-400" size={24} />
-          <div>
-            <h2 className="text-base font-bold">Système & Informations</h2>
-            <p className="text-xs text-muted">Version du template et status PWA.</p>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted">Version du Template</span>
-          <span className="font-mono font-bold text-xs bg-indigo-500/10 text-indigo-400 px-2.5 py-1 rounded-md border border-indigo-500/20">
-            v1.0.0 // Liquid Glass
-          </span>
-        </div>
-      </div>
+      {/* Modale de confirmation de déconnexion système */}
+      <ConfirmModal
+        isOpen={isSignOutConfirmOpen}
+        onClose={() => setIsSignOutConfirmOpen(false)}
+        onConfirm={handleConfirmSignOut}
+        title={t('confirm_signout.title')}
+        message={t('confirm_signout.message')}
+        isDanger={true}
+      />
     </div>
   );
 }

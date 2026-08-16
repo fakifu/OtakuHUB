@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, Play, Star, BookOpen, Heart, TrendingUp,
   Tv, CheckCircle, Bookmark, Sparkles, Flame, Calendar, Compass,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, Settings
 } from 'lucide-react';
 
 import HeroBanner from '../components/anime/HeroBanner';
@@ -98,13 +98,16 @@ function CarouselAnimeCard({ anime, onClick }) {
 }
 
 // Carte animé en cours (mini-card horizontale)
-function WatchingCard({ entry }) {
+function WatchingCard({ entry, onClick }) {
   const progress = entry.totalEpisodes > 0
     ? Math.round((entry.episodesWatched / entry.totalEpisodes) * 100)
     : null;
 
   return (
-    <div className="flex items-center gap-3 glass-liquid-lite rounded-list p-3">
+    <div
+      onClick={onClick}
+      className="flex items-center gap-3 glass-liquid-lite rounded-list p-3 cursor-pointer hover:bg-white/10 active:scale-[0.99] transition-all"
+    >
       <div className="relative shrink-0">
         <img
           src={entry.coverImage}
@@ -343,6 +346,15 @@ export default function DashboardPage() {
       color: 'rose',
       delay: 0.28,
     },
+    {
+      icon: Settings,
+      label: t('stats.settings'),
+      value: t('stats.settings_val'),
+      subValue: t('stats.settings_sub'),
+      color: 'yellow',
+      delay: 0.35,
+      onClick: () => navigate('/settings'),
+    },
   ];
 
   const containerVariants = {
@@ -357,7 +369,7 @@ export default function DashboardPage() {
         {isHeroLoading ? (
           <HeroSkeleton />
         ) : (
-          <HeroBanner anime={heroAnime} onNextAnime={handleNextHeroAnime} />
+          <HeroBanner anime={heroAnime} />
         )}
       </div>
 
@@ -444,7 +456,8 @@ export default function DashboardPage() {
               subValue={card.subValue}
               color={card.color}
               delay={card.delay}
-              className={i === 5 ? 'col-span-2' : ''}
+              onClick={card.onClick}
+              className={card.className || ''}
             />
           ))}
         </motion.div>
@@ -460,7 +473,11 @@ export default function DashboardPage() {
           />
           <div className="space-y-2">
             {watchingList.map((entry) => (
-              <WatchingCard key={entry.animeId} entry={entry} />
+              <WatchingCard
+                key={entry.animeId}
+                entry={entry}
+                onClick={() => handleOpenDetail(entry.anime || entry)}
+              />
             ))}
           </div>
         </div>
