@@ -16,6 +16,8 @@ export default function FilterPanel({
   onClose,
   sortKey,
   setSortKey,
+  isGroupedByFranchise,
+  setIsGroupedByFranchise,
   selectedGenre,
   setSelectedGenre,
   selectedFormat,
@@ -27,7 +29,6 @@ export default function FilterPanel({
   useLockBodyScroll(isOpen);
 
   const SORT_OPTIONS = [
-    { value: 'chronological', label: 'Par Saga & Chronologie (S1, S2, S3...)', icon: Layers },
     { value: 'addedAt', label: t('library.sort_updated') || 'Récents / Mis à jour', icon: Clock },
     { value: 'rating', label: t('library.my_rating') || 'Ma note (/10)', icon: Star },
     { value: 'title', label: t('library.sort_title') || 'Nom (A-Z)', icon: BookOpen },
@@ -69,7 +70,7 @@ export default function FilterPanel({
             <div className="p-6 pb-4 flex justify-between items-center shrink-0 border-b border-white/10">
               <h2 className="text-base font-bold text-foreground flex items-center gap-2 tracking-tight">
                 <SlidersHorizontal size={18} className="text-indigo-400" />
-                Filtres & Tri
+                Filtres & Tri Multi-Niveaux
               </h2>
 
               <div className="flex items-center gap-3">
@@ -95,10 +96,39 @@ export default function FilterPanel({
             {/* CONTENU DEFILANT (SCROLLABLE SI PAS ASSEZ DE PLACE) */}
             <div className="px-6 py-4 overflow-y-auto min-h-0 flex-1 overscroll-contain space-y-6 scrollbar-thin">
               
-              {/* SECTION TRI */}
+              {/* SECTION REGROUPEMENT PAR SAGA (ORGANISATION CHRONOLOGIQUE) */}
               <div className="space-y-2.5">
                 <label className="text-xs font-bold uppercase tracking-wider text-muted block">
-                  Trier la bibliothèque par
+                  Structure de la Liste
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsGroupedByFranchise(!isGroupedByFranchise)}
+                  className={`w-full flex items-center justify-between p-4 rounded-2xl border text-xs font-bold transition-all cursor-pointer ${
+                    isGroupedByFranchise
+                      ? 'bg-indigo-500/20 border-indigo-500/60 text-indigo-300 shadow-lg shadow-indigo-500/10'
+                      : 'glass-panel text-muted hover:text-foreground hover:bg-white/5 border-white/5'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Layers size={18} className={isGroupedByFranchise ? 'text-indigo-400' : 'text-muted'} />
+                    <div className="text-left">
+                      <p className="font-extrabold text-sm leading-tight text-foreground">Regrouper par Saga</p>
+                      <p className="text-[11px] text-muted font-medium mt-0.5">Saisons dans l'ordre (S1 ➔ S2 ➔ S3...)</p>
+                    </div>
+                  </div>
+
+                  {/* BOUTON SWITCH TOGGLE */}
+                  <div className={`w-11 h-6 rounded-full p-0.5 transition-colors ${isGroupedByFranchise ? 'bg-indigo-500' : 'bg-white/20'}`}>
+                    <div className={`w-5 h-5 rounded-full bg-white transition-transform ${isGroupedByFranchise ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </div>
+                </button>
+              </div>
+
+              {/* SECTION TRI SECONDAIRE */}
+              <div className="space-y-2.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted block">
+                  {isGroupedByFranchise ? 'Puis trier les Sagas par' : 'Trier la bibliothèque par'}
                 </label>
                 <div className="grid grid-cols-1 gap-2">
                   {SORT_OPTIONS.map((opt) => {

@@ -69,6 +69,7 @@ export default function LibraryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeStatus, setActiveStatus] = useState(null);
   const [sortKey, setSortKey] = useState('addedAt');
+  const [isGroupedByFranchise, setIsGroupedByFranchise] = useState(false);
   const [selectedGenre, setSelectedGenre] = useState(null);
   const [selectedFormat, setSelectedFormat] = useState('ALL');
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
@@ -110,11 +111,11 @@ export default function LibraryPage() {
       });
     }
 
-    // Tri
-    result = sortLibraryBy(result, sortKey);
+    // Tri multi-niveaux (Saga & Chronologie + Tri secondaire)
+    result = sortLibraryBy(result, sortKey, isGroupedByFranchise);
 
     return result;
-  }, [library, searchQuery, activeStatus, selectedGenre, selectedFormat, sortKey]);
+  }, [library, searchQuery, activeStatus, selectedGenre, selectedFormat, sortKey, isGroupedByFranchise]);
 
   const [animeStack, setAnimeStack] = useState([]);
   const selectedAnimeId = animeStack[animeStack.length - 1] || null;
@@ -273,12 +274,14 @@ export default function LibraryPage() {
         </div>
       </div>
 
-      {/* PANNEAU DE FILTRES SLIDE-OVER NEXUSOS */}
+      {/* PANNEAU DE FILTRES SLIDE-OVER */}
       <FilterPanel
         isOpen={isFilterPanelOpen}
         onClose={() => setIsFilterPanelOpen(false)}
         sortKey={sortKey}
         setSortKey={setSortKey}
+        isGroupedByFranchise={isGroupedByFranchise}
+        setIsGroupedByFranchise={setIsGroupedByFranchise}
         selectedGenre={selectedGenre}
         setSelectedGenre={setSelectedGenre}
         selectedFormat={selectedFormat}
@@ -286,6 +289,7 @@ export default function LibraryPage() {
         totalResults={displayedLibrary.length}
         onReset={() => {
           setSortKey('addedAt');
+          setIsGroupedByFranchise(false);
           setSelectedGenre(null);
           setSelectedFormat('ALL');
         }}

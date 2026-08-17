@@ -124,68 +124,81 @@ function getStartDateVal(entry) {
 }
 
 /**
- * Trie la library par clé.
- * sortKey: 'rating' | 'title' | 'addedAt' | 'progress' | 'status' | 'chronological'
+ * Trie la library avec support du regroupement par Saga + Tri secondaire.
+ * sortKey: 'rating' | 'title' | 'addedAt' | 'progress' | 'status'
+ * isGroupedByFranchise: boolean (si true, regroupe par saga et classe chronologiquement S1 -> S2 -> S3...)
  */
-export function sortLibraryBy(library, sortKey) {
-  if (!library) return [];
-  const copy = [...library];
+export function sortLibraryBy(library, sortKey, isGroupedByFranchise = false) {
+  if (!library || library.length === 0) return [];
 
-  const STATUS_ORDER = { WATCHING: 0, PLAN_TO_WATCH: 1, COMPLETED: 2 };
-
-  switch (sortKey) {
-    case 'chronological':
-      return copy.sort((a, b) => {
-        const titleA = a.title || a.anime_data?.title?.english || a.anime_data?.title?.romaji || a.anime?.title?.english || '';
-        const titleB = b.title || b.anime_data?.title?.english || b.anime_data?.title?.romaji || b.anime?.title?.english || '';
-        const rootA = getFranchiseRoot(titleA);
-        const rootB = getFranchiseRoot(titleB);
-
-        // Si même franchise -> trier par ordre chronologique de sortie (S1 -> S2 -> S3)
-        if (rootA.toLowerCase() === rootB.toLowerCase()) {
-          const dateA = getStartDateVal(a);
-          const dateB = getStartDateVal(b);
-          if (dateA !== dateB) return dateA - dateB;
-          return titleA.localeCompare(titleB, 'fr', { sensitivity: 'base' });
-        }
-
-        // Sinon trier les franchises par ordre alphabétique
-        return rootA.localeCompare(rootB, 'fr', { sensitivity: 'base' });
-      });
-
-    case 'rating':
-      return copy.sort((a, b) => {
-        // Les animés non notés (0) vont à la fin
+  // Helper de comparaison de deux entrées pour un critère donné
+  const compareEntriesByKey = (a, b, key) => {
+    switch (key) {
+      case 'rating':
         if (a.rating === 0 && b.rating > 0) return 1;
         if (b.rating === 0 && a.rating > 0) return -1;
-        return b.rating - a.rating;
-      });
+        if (b.rating !== a.rating) return b.rating - a.rating;
+        return new Date(b.updatedAt || b.addedAt || 0) - new Date(a.updatedAt || a.addedAt || 0);
 
-    case 'title':
-      return copy.sort((a, b) =>
-        (a.title || '').localeCompare(b.title || '', 'fr', { sensitivity: 'base' })
-      );
+      case 'addedAt':
+        return new Date(b.updatedAt || b.addedAt || 0) - new Date(a.updatedAt || a.addedAt || 0);
 
-    case 'addedAt':
-      return copy.sort((a, b) =>
-        new Date(b.addedAt || 0) - new Date(a.addedAt || 0)
-      );
-
-    case 'progress':
-      return copy.sort((a, b) => {
+      case 'progress': {
         const progA = a.totalEpisodes > 0 ? (a.episodesWatched / a.totalEpisodes) : 0;
         const progB = b.totalEpisodes > 0 ? (b.episodesWatched / b.totalEpisodes) : 0;
-        return progB - progA;
+        if (progB !== progA) return progB - progA;
+        return (a.title || '').localeCompare(b.title || '', 'fr', { sensitivity: 'base' });
+      }
+
+      case 'title':
+      default:
+        return (a.title || '').localeCompare(b.title || '', 'fr', { sensitivity: 'base' });
+    }
+  };
+
+  // ── OPTION : REGROUPEMENT PAR SAGA & CHRONOLOGIE (S1, S2, S3...) ──
+  if (isGroupedByFranchise) {
+    const franchiseMap = new Map();
+
+    library.forEach(entry => {
+      const title = entry.title || entry.anime_data?.title?.english || entry.anime_data?.title?.romaji || entry.anime?.title?.english || '';
+      const root = getFranchiseRoot(title) || title || 'Autre';
+      const key = root.toLowerCase();
+
+      if (!franchiseMap.has(key)) {
+        franchiseMap.set(key, { rootName: root, items: [] });
+      }
+      franchiseMap.get(key).items.push(entry);
+    });
+
+    // Au sein de chaque saga, trier chronologiquement par date de sortie (S1 -> S2 -> S3)
+    const franchiseGroups = Array.from(franchiseMap.values()).map(group => {
+      group.items.sort((a, b) => {
+        const dateA = getStartDateVal(a);
+        const dateB = getStartDateVal(b);
+        if (dateA !== dateB) return dateA - dateB;
+        return (a.title || '').localeCompare(b.title || '', 'fr', { sensitivity: 'base' });
       });
 
-    case 'status':
-      return copy.sort((a, b) =>
-        (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99)
-      );
+      // Meilleure entrée de la saga pour ordonner les sagas entre elles
+      group.bestEntry = group.items.reduce((best, cur) => {
+        if (!best) return cur;
+        return compareEntriesByKey(cur, best, sortKey) < 0 ? cur : best;
+      }, null);
 
-    default:
-      return copy;
+      return group;
+    });
+
+    // Ordonner les sagas entre elles selon le critère secondaire (Note, Date, Nom A-Z, Progression)
+    franchiseGroups.sort((gA, gB) => compareEntriesByKey(gA.bestEntry, gB.bestEntry, sortKey));
+
+    // Aplatir le tableau
+    return franchiseGroups.flatMap(g => g.items);
   }
+
+  // ── TRI CLASSIQUE PAR CLÉ UNIQUE ──
+  const copy = [...library];
+  return copy.sort((a, b) => compareEntriesByKey(a, b, sortKey));
 }
 
 /**
