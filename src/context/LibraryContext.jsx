@@ -116,7 +116,43 @@ export function LibraryProvider({ children }) {
   // Utilisation d'une ref pour éviter que les callbacks ne déclenchent la synchro en boucle
   const isSyncingRef = useRef(false);
 
-  // 1. Charger les données Supabase au démarrage si connecté
+  // ── Push de la bibliothèque locale vers Supabase ──
+  const pushLocalLibraryToSupabase = useCallback(async (customUser = null) => {
+    const targetUser = customUser || user;
+    if (!targetUser || !library || library.length === 0) return;
+
+    isSyncingRef.current = true;
+    try {
+      const payloadList = library.map(entryData => ({
+        user_id: targetUser.id,
+        anime_id: entryData.animeId,
+        status: entryData.status,
+        episodes_watched: entryData.episodesWatched,
+        total_episodes: entryData.totalEpisodes,
+        rating: Math.round(Number(entryData.rating) || 0),
+        notes: entryData.notes || '',
+        anime_data: entryData.anime,
+        updated_at: entryData.updatedAt || new Date().toISOString(),
+        added_at: entryData.addedAt || new Date().toISOString(),
+      }));
+
+      const { error } = await supabase
+        .from('otakuhub_library')
+        .upsert(payloadList, { onConflict: 'user_id,anime_id' });
+
+      if (error) {
+        console.warn("OtakuHub: Erreur push local library vers Supabase", error);
+      } else {
+        console.log(`✨ Supabase: ${payloadList.length} animés locaux synchronisés avec succès !`);
+      }
+    } catch (err) {
+      console.error("❌ OtakuHub: Exception push local library", err);
+    } finally {
+      setTimeout(() => { isSyncingRef.current = false; }, 500);
+    }
+  }, [user, library]);
+
+  // 1. Charger les données Supabase au démarrage si connecté + fusionner la library locale
   useEffect(() => {
     if (!user) return;
 
@@ -128,10 +164,13 @@ export function LibraryProvider({ children }) {
           .eq('user_id', user.id);
 
         if (error) throw error;
-        
-        if (data) {
+
+        if (data && data.length > 0) {
           const normalizedData = data.map(normalizeEntry).filter(Boolean);
           dispatch({ type: ACTIONS.SET_LIBRARY, payload: normalizedData });
+        } else if (library.length > 0) {
+          // Si Supabase est vide mais que l'appareil a une bibliothèque locale, pousser immédiatement vers Supabase
+          pushLocalLibraryToSupabase(user);
         }
       } catch (err) {
         console.error("❌ OtakuHub: Erreur chargement Supabase", err);
@@ -379,6 +418,7 @@ export function LibraryProvider({ children }) {
     getEntry,
     clearLibrary,
     importBackupData,
+    pushLocalLibraryToSupabase,
   };
 
   return (

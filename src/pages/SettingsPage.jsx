@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sun, Moon, Globe, User, LogOut, FolderInput, CheckCircle } from 'lucide-react';
+import { Sun, Moon, Globe, User, LogOut, FolderInput, CheckCircle, RefreshCw } from 'lucide-react';
 import { useTranslation } from '../hooks/useTranslation';
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../context/AuthContext';
 import { useLibrary } from '../context/LibraryContext';
+import { useToast } from '../context/ToastContext';
 import AuthForm from '../components/auth/AuthForm';
 import ConfirmModal from '../components/ui/Feedback/ConfirmModal';
 import ListCard from '../components/ui/Layout/ListCard';
@@ -13,6 +14,8 @@ export default function SettingsPage() {
   const { t, language, changeLanguage } = useTranslation();
   const { theme, toggleTheme } = useTheme();
   const { user, signOut } = useAuth();
+  const { library, pushLocalLibraryToSupabase } = useLibrary();
+  const toast = useToast();
   
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isSignOutConfirmOpen, setIsSignOutConfirmOpen] = useState(false);
@@ -37,6 +40,21 @@ export default function SettingsPage() {
 
   const handleConfirmSignOut = async () => {
     await signOut();
+  };
+
+  const handleManualSync = async () => {
+    if (!user) {
+      toast?.showToast('info', 'Connectez-vous à votre compte Supabase pour synchroniser vos animés.');
+      setIsAuthOpen(true);
+      return;
+    }
+
+    try {
+      await pushLocalLibraryToSupabase();
+      toast?.showToast('success', `${library.length} animés synchronisés avec succès sur le Cloud Supabase !`);
+    } catch (err) {
+      toast?.showToast('error', 'Erreur lors de la synchronisation avec Supabase.');
+    }
   };
 
   return (
@@ -67,6 +85,18 @@ export default function SettingsPage() {
             subtitle={language === 'fr' ? 'Français' : 'English'}
             leftIcon={Globe}
             onClick={() => changeLanguage(language === 'fr' ? 'en' : 'fr')}
+            className="p-4"
+          />
+        </motion.div>
+
+        {/* SYNCHRONISATION CLOUD */}
+        <motion.div variants={itemVariants}>
+          <ListCard
+            variant="full"
+            title="Synchroniser avec Supabase"
+            subtitle={user ? `Forcer l'envoi de mes ${library.length} animés vers la base` : 'Connexion requise pour envoyer vos animés'}
+            leftIcon={RefreshCw}
+            onClick={handleManualSync}
             className="p-4"
           />
         </motion.div>
