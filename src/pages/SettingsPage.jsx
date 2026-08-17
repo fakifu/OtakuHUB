@@ -40,7 +40,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="px-4 py-8 max-w-lg mx-auto">
+    <div className="px-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-32 max-w-lg mx-auto">
       <motion.div
         variants={containerVariants}
         initial="hidden"
