@@ -101,19 +101,25 @@ export function getNextSeason() {
   return { season: SEASONS[nextIndex], year: nextYear };
 }
 
-// ── Système de Cache Client (In-Memory + SessionStorage) ─────────────────────
+// ── Système de Cache Client Persistant (In-Memory + LocalStorage 24h TTL) ───
 const apiCache = new Map();
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // Cache valide 24 heures pour éviter le rate-limit
 
 function getCachedData(key) {
   if (apiCache.has(key)) {
-    return apiCache.get(key);
+    const cachedItem = apiCache.get(key);
+    if (cachedItem && cachedItem.timestamp && (Date.now() - cachedItem.timestamp < CACHE_TTL_MS)) {
+      return cachedItem.data;
+    }
   }
   try {
-    const sessionItem = sessionStorage.getItem(`otakuhub_cache_${key}`);
-    if (sessionItem) {
-      const parsed = JSON.parse(sessionItem);
-      apiCache.set(key, parsed);
-      return parsed;
+    const localItem = localStorage.getItem(`otakuhub_cache_${key}`);
+    if (localItem) {
+      const parsed = JSON.parse(localItem);
+      if (parsed && parsed.timestamp && (Date.now() - parsed.timestamp < CACHE_TTL_MS)) {
+        apiCache.set(key, parsed);
+        return parsed.data;
+      }
     }
   } catch (e) {
     // Ignore storage errors
@@ -123,9 +129,10 @@ function getCachedData(key) {
 
 function setCachedData(key, data) {
   if (!data) return;
-  apiCache.set(key, data);
+  const payload = { timestamp: Date.now(), data };
+  apiCache.set(key, payload);
   try {
-    sessionStorage.setItem(`otakuhub_cache_${key}`, JSON.stringify(data));
+    localStorage.setItem(`otakuhub_cache_${key}`, JSON.stringify(payload));
   } catch (e) {
     // Ignore quota exceeded or storage errors
   }
