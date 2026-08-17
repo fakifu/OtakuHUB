@@ -100,12 +100,34 @@ export function getLibraryByStatus(library, status) {
   return library.filter(e => e.status === status);
 }
 
-// ── Helper: Extraire le nom de franchise racine (ex: Attack on Titan Season 2 -> Attack on Titan)
-function getFranchiseRoot(rawTitle) {
-  if (!rawTitle) return '';
-  return rawTitle
-    .replace(/\s*(?::\s*)?(?:season\s*\d+|part\s*\d+|\d+(?:st|nd|rd|th)\s*season|final\s*season|cour\s*\d+|the\s*final\s*chapters?|movie|ova|ona|special|specials).*/i, '')
-    .trim() || rawTitle;
+// ── Helper: Extraire toutes les clés de racine de franchise d'une entrée (Anglais, Romaji, UserPreferred)
+function getFranchiseKeys(entry) {
+  const anime = entry.anime_data || entry.anime || {};
+  const titles = [
+    entry.title,
+    anime.title?.english,
+    anime.title?.romaji,
+    anime.title?.userPreferred,
+  ].filter(Boolean);
+
+  const clean = (t) => {
+    if (typeof t !== 'string') return '';
+    return t
+      .replace(/:\s*.*$/, '') // Supprime les sous-titres après ':' (ex: Demon Slayer: Entertainment District Arc -> Demon Slayer)
+      .replace(/\s*-\s*.*$/, '') // Supprime les sous-titres après '-' (ex: Kaguya-sama - Ultra Romantic -> Kaguya-sama)
+      .replace(/\s*(?:season\s*\d+|part\s*\d+|\d+(?:st|nd|rd|th)\s*season|final\s*season|cour\s*\d+|the\s*final\s*chapters?|movie|ova|ona|special|specials).*/i, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '') // Ne garder que alphanumérique (ex: "attackontitan")
+      .trim();
+  };
+
+  const keys = new Set();
+  titles.forEach(t => {
+    const c = clean(t);
+    if (c.length >= 3) keys.add(c);
+  });
+
+  return Array.from(keys);
 }
 
 // ── Helper: Date de début au format numérique pour tri (YYYYMMDD)
@@ -158,21 +180,36 @@ export function sortLibraryBy(library, sortKey, isGroupedByFranchise = false) {
 
   // ── OPTION : REGROUPEMENT PAR SAGA & CHRONOLOGIE (S1, S2, S3...) ──
   if (isGroupedByFranchise) {
-    const franchiseMap = new Map();
+    // Regroupement par clés partagées (Graph-based Franchise Clustering)
+    const groups = []; // [{ mainKey, items: [] }]
 
     library.forEach(entry => {
-      const title = entry.title || entry.anime_data?.title?.english || entry.anime_data?.title?.romaji || entry.anime?.title?.english || '';
-      const root = getFranchiseRoot(title) || title || 'Autre';
-      const key = root.toLowerCase();
+      const entryKeys = getFranchiseKeys(entry);
+      let targetGroup = null;
 
-      if (!franchiseMap.has(key)) {
-        franchiseMap.set(key, { rootName: root, items: [] });
+      // Chercher si l'entrée partage une clé de racine avec un groupe existant
+      for (const group of groups) {
+        if (group.keys.some(k => entryKeys.includes(k))) {
+          targetGroup = group;
+          break;
+        }
       }
-      franchiseMap.get(key).items.push(entry);
+
+      if (targetGroup) {
+        targetGroup.items.push(entry);
+        entryKeys.forEach(k => targetGroup.keys.push(k));
+      } else {
+        const primaryTitle = entry.title || entry.anime_data?.title?.english || entry.anime_data?.title?.romaji || 'Autre';
+        groups.push({
+          primaryTitle,
+          keys: [...entryKeys],
+          items: [entry],
+        });
+      }
     });
 
-    // Au sein de chaque saga, trier chronologiquement par date de sortie (S1 -> S2 -> S3)
-    const franchiseGroups = Array.from(franchiseMap.values()).map(group => {
+    // 1. Au sein de CHAQUE SAGA : Les saisons sont 100% indivisibles et triées chronologiquement (S1 -> S2 -> S3)
+    groups.forEach(group => {
       group.items.sort((a, b) => {
         const dateA = getStartDateVal(a);
         const dateB = getStartDateVal(b);
@@ -180,20 +217,18 @@ export function sortLibraryBy(library, sortKey, isGroupedByFranchise = false) {
         return (a.title || '').localeCompare(b.title || '', 'fr', { sensitivity: 'base' });
       });
 
-      // Meilleure entrée de la saga pour ordonner les sagas entre elles
+      // Meilleure entrée de la saga pour classer la saga par rapport aux autres sagas
       group.bestEntry = group.items.reduce((best, cur) => {
         if (!best) return cur;
         return compareEntriesByKey(cur, best, sortKey) < 0 ? cur : best;
       }, null);
-
-      return group;
     });
 
-    // Ordonner les sagas entre elles selon le critère secondaire (Note, Date, Nom A-Z, Progression)
-    franchiseGroups.sort((gA, gB) => compareEntriesByKey(gA.bestEntry, gB.bestEntry, sortKey));
+    // 2. Classer les SAGAS (blocs complets) entre elles selon le critère de tri sélectionné (Note, Récents, A-Z...)
+    groups.sort((gA, gB) => compareEntriesByKey(gA.bestEntry, gB.bestEntry, sortKey));
 
-    // Aplatir le tableau
-    return franchiseGroups.flatMap(g => g.items);
+    // 3. Aplatir la liste finale : chaque saga reste 100% groupée et ininterrompue !
+    return groups.flatMap(g => g.items);
   }
 
   // ── TRI CLASSIQUE PAR CLÉ UNIQUE ──
