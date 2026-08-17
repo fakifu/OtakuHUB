@@ -259,14 +259,15 @@ export default function DashboardPage() {
     setHeroAnime(trendingList[nextIndex]);
   }, [trendingList, heroIndex]);
 
-  const [selectedAnimeId, setSelectedAnimeId] = useState(null);
+  const [animeStack, setAnimeStack] = useState([]);
+  const selectedAnimeId = animeStack[animeStack.length - 1] || null;
   const listScrollTopRef = React.useRef(0);
 
   // Écouter le re-clic sur l'onglet actif dans la barre de navigation du bas
   useEffect(() => {
     const handleReset = (e) => {
       if (e.detail?.route === '/' || e.detail?.tabIndex === 0) {
-        setSelectedAnimeId(null);
+        setAnimeStack([]);
       }
     };
     window.addEventListener('reset-tab-detail', handleReset);
@@ -275,23 +276,28 @@ export default function DashboardPage() {
 
   // Navigation vers la page dédiée de détail au sein de cet onglet
   const handleOpenDetail = useCallback((anime) => {
-    const id = anime?.id || anime?.animeId;
+    const id = typeof anime === 'number' || typeof anime === 'string' ? anime : (anime?.id || anime?.animeId);
     if (id) {
       const container = document.getElementById('dashboard-page-root')?.closest('.overflow-y-auto');
       if (container) {
         listScrollTopRef.current = container.scrollTop;
       }
-      setSelectedAnimeId(id);
+      setAnimeStack(prev => [...prev, id]);
     }
   }, []);
 
   const handleBackFromDetail = () => {
-    setSelectedAnimeId(null);
-    requestAnimationFrame(() => {
-      const container = document.getElementById('dashboard-page-root')?.closest('.overflow-y-auto');
-      if (container) {
-        container.scrollTop = listScrollTopRef.current;
+    setAnimeStack(prev => {
+      if (prev.length <= 1) {
+        requestAnimationFrame(() => {
+          const container = document.getElementById('dashboard-page-root')?.closest('.overflow-y-auto');
+          if (container) {
+            container.scrollTop = listScrollTopRef.current;
+          }
+        });
+        return [];
       }
+      return prev.slice(0, -1);
     });
   };
 
@@ -300,7 +306,7 @@ export default function DashboardPage() {
       <AnimeDetailPage
         animeId={selectedAnimeId}
         onBack={handleBackFromDetail}
-        onSelectAnime={setSelectedAnimeId}
+        onSelectAnime={handleOpenDetail}
       />
     );
   }

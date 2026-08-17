@@ -116,14 +116,15 @@ export default function LibraryPage() {
     return result;
   }, [library, searchQuery, activeStatus, selectedGenre, selectedFormat, sortKey]);
 
-  const [selectedAnimeId, setSelectedAnimeId] = useState(null);
+  const [animeStack, setAnimeStack] = useState([]);
+  const selectedAnimeId = animeStack[animeStack.length - 1] || null;
   const listScrollTopRef = React.useRef(0);
 
   // Écouter le re-clic sur l'onglet actif dans la barre de navigation du bas
   useEffect(() => {
     const handleReset = (e) => {
       if (e.detail?.route === '/library' || e.detail?.tabIndex === 2) {
-        setSelectedAnimeId(null);
+        setAnimeStack([]);
       }
     };
     window.addEventListener('reset-tab-detail', handleReset);
@@ -137,17 +138,28 @@ export default function LibraryPage() {
       if (container) {
         listScrollTopRef.current = container.scrollTop;
       }
-      setSelectedAnimeId(id);
+      setAnimeStack([id]);
+    }
+  };
+
+  const handleSelectAnime = (newId) => {
+    if (newId) {
+      setAnimeStack(prev => [...prev, newId]);
     }
   };
 
   const handleBackFromDetail = () => {
-    setSelectedAnimeId(null);
-    requestAnimationFrame(() => {
-      const container = document.getElementById('library-page-root')?.closest('.overflow-y-auto');
-      if (container) {
-        container.scrollTop = listScrollTopRef.current;
+    setAnimeStack(prev => {
+      if (prev.length <= 1) {
+        requestAnimationFrame(() => {
+          const container = document.getElementById('library-page-root')?.closest('.overflow-y-auto');
+          if (container) {
+            container.scrollTop = listScrollTopRef.current;
+          }
+        });
+        return [];
       }
+      return prev.slice(0, -1);
     });
   };
 
@@ -157,7 +169,7 @@ export default function LibraryPage() {
       <AnimeDetailPage
         animeId={selectedAnimeId}
         onBack={handleBackFromDetail}
-        onSelectAnime={setSelectedAnimeId}
+        onSelectAnime={handleSelectAnime}
       />
     );
   }

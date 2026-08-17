@@ -100,14 +100,15 @@ export default function SearchPage() {
     return () => { cancelled = true; };
   }, [debouncedQuery, toast]);
 
-  const [selectedAnimeId, setSelectedAnimeId] = useState(null);
-  const listScrollTopRef = React.useRef(0);
+  const [animeStack, setAnimeStack] = useState([]);
+  const selectedAnimeId = animeStack[animeStack.length - 1] || null;
+  const listScrollTopRef = useRef(0);
 
-  // Écouter le re-clic sur l'onglet actif dans la barre de navigation du bas
+  // Re-clic onglet -> Reset
   useEffect(() => {
     const handleReset = (e) => {
       if (e.detail?.route === '/search' || e.detail?.tabIndex === 1) {
-        setSelectedAnimeId(null);
+        setAnimeStack([]);
       }
     };
     window.addEventListener('reset-tab-detail', handleReset);
@@ -115,23 +116,28 @@ export default function SearchPage() {
   }, []);
 
   const handleSelectAnime = useCallback((anime) => {
-    const id = anime?.id || anime?.animeId;
+    const id = typeof anime === 'number' || typeof anime === 'string' ? anime : (anime?.id || anime?.animeId);
     if (id) {
       const container = document.getElementById('search-page-root')?.closest('.overflow-y-auto');
       if (container) {
         listScrollTopRef.current = container.scrollTop;
       }
-      setSelectedAnimeId(id);
+      setAnimeStack(prev => [...prev, id]);
     }
   }, []);
 
   const handleBackFromDetail = () => {
-    setSelectedAnimeId(null);
-    requestAnimationFrame(() => {
-      const container = document.getElementById('search-page-root')?.closest('.overflow-y-auto');
-      if (container) {
-        container.scrollTop = listScrollTopRef.current;
+    setAnimeStack(prev => {
+      if (prev.length <= 1) {
+        requestAnimationFrame(() => {
+          const container = document.getElementById('search-page-root')?.closest('.overflow-y-auto');
+          if (container) {
+            container.scrollTop = listScrollTopRef.current;
+          }
+        });
+        return [];
       }
+      return prev.slice(0, -1);
     });
   };
 
@@ -140,7 +146,7 @@ export default function SearchPage() {
       <AnimeDetailPage
         animeId={selectedAnimeId}
         onBack={handleBackFromDetail}
-        onSelectAnime={setSelectedAnimeId}
+        onSelectAnime={handleSelectAnime}
       />
     );
   }
