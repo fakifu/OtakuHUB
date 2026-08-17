@@ -157,6 +157,7 @@ export default function LibraryPage() {
       <AnimeDetailPage
         animeId={selectedAnimeId}
         onBack={handleBackFromDetail}
+        onSelectAnime={setSelectedAnimeId}
       />
     );
   }
