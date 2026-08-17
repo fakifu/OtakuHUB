@@ -166,8 +166,25 @@ export function LibraryProvider({ children }) {
         if (error) throw error;
 
         if (data && data.length > 0) {
-          const normalizedData = data.map(normalizeEntry).filter(Boolean);
-          dispatch({ type: ACTIONS.SET_LIBRARY, payload: normalizedData });
+          const remoteNormalized = data.map(normalizeEntry).filter(Boolean);
+          const remoteMap = new Map(remoteNormalized.map(e => [e.animeId, e]));
+          let hasNewLocalEntries = false;
+
+          // Fusionner les animés créés localement hors-ligne avec Supabase
+          library.forEach(localEntry => {
+            if (localEntry && localEntry.animeId && !remoteMap.has(localEntry.animeId)) {
+              remoteMap.set(localEntry.animeId, localEntry);
+              hasNewLocalEntries = true;
+            }
+          });
+
+          const mergedList = Array.from(remoteMap.values());
+          dispatch({ type: ACTIONS.SET_LIBRARY, payload: mergedList });
+
+          // Si le téléphone possédait des animés locaux non enregistrés sur Supabase, les pousser immédiatement !
+          if (hasNewLocalEntries) {
+            pushLocalLibraryToSupabase(user);
+          }
         } else if (library.length > 0) {
           // Si Supabase est vide mais que l'appareil a une bibliothèque locale, pousser immédiatement vers Supabase
           pushLocalLibraryToSupabase(user);
