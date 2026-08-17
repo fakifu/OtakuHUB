@@ -1,7 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SlidersHorizontal, X, RotateCcw, Clock, Star, BookOpen, CheckCircle, Sparkles } from 'lucide-react';
+import { SlidersHorizontal, X, RotateCcw, Clock, Star, BookOpen, CheckCircle, Sparkles, Layers } from 'lucide-react';
 import useLockBodyScroll from '../../hooks/useLockBodyScroll';
 import { useTranslation } from '../../hooks/useTranslation';
 import Button from '../ui/Primitives/Button';
@@ -27,6 +27,7 @@ export default function FilterPanel({
   useLockBodyScroll(isOpen);
 
   const SORT_OPTIONS = [
+    { value: 'chronological', label: 'Par Saga & Chronologie (S1, S2, S3...)', icon: Layers },
     { value: 'addedAt', label: t('library.sort_updated') || 'Récents / Mis à jour', icon: Clock },
     { value: 'rating', label: t('library.my_rating') || 'Ma note (/10)', icon: Star },
     { value: 'title', label: t('library.sort_title') || 'Nom (A-Z)', icon: BookOpen },
@@ -53,13 +54,13 @@ export default function FilterPanel({
             onClick={onClose}
           />
 
-          {/* PANNEAU FLOATING GLASS AVEC ARRONDI ROUNDED-BIGBOX NEXUSOS */}
+          {/* PANNEAU FLOATING GLASS SCROLLABLE AVEC ARRONDI ROUNDED-BIGBOX */}
           <motion.div
             initial={{ x: '100%', opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: '100%', opacity: 0 }}
             transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-            className="relative w-full max-w-[360px] m-2 h-[calc(100dvh-1rem)] glass-panel-radiant border border-white/10 rounded-bigbox shadow-2xl overflow-hidden flex flex-col pointer-events-auto z-10"
+            className="relative w-full max-w-[360px] m-2 max-h-[calc(100dvh-1rem)] glass-panel-radiant border border-white/10 rounded-bigbox shadow-2xl overflow-hidden flex flex-col pointer-events-auto z-10"
           >
             {/* SAFE AREA TOP */}
             <div className="pt-[env(safe-area-inset-top,0px)] bg-surface/5" />
@@ -91,8 +92,8 @@ export default function FilterPanel({
               </div>
             </div>
 
-            {/* CONTENU DEFILANT */}
-            <div className="px-6 py-4 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+            {/* CONTENU DEFILANT (SCROLLABLE SI PAS ASSEZ DE PLACE) */}
+            <div className="px-6 py-4 overflow-y-auto min-h-0 flex-1 overscroll-contain space-y-6 scrollbar-thin">
               
               {/* SECTION TRI */}
               <div className="space-y-2.5">

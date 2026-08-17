@@ -100,9 +100,32 @@ export function getLibraryByStatus(library, status) {
   return library.filter(e => e.status === status);
 }
 
+// ── Helper: Extraire le nom de franchise racine (ex: Attack on Titan Season 2 -> Attack on Titan)
+function getFranchiseRoot(rawTitle) {
+  if (!rawTitle) return '';
+  return rawTitle
+    .replace(/\s*(?::\s*)?(?:season\s*\d+|part\s*\d+|\d+(?:st|nd|rd|th)\s*season|final\s*season|cour\s*\d+|the\s*final\s*chapters?|movie|ova|ona|special|specials).*/i, '')
+    .trim() || rawTitle;
+}
+
+// ── Helper: Date de début au format numérique pour tri (YYYYMMDD)
+function getStartDateVal(entry) {
+  const anime = entry.anime_data || entry.anime || entry;
+  const start = anime.startDate || {};
+  if (start.year) {
+    const m = String(start.month || 1).padStart(2, '0');
+    const d = String(start.day || 1).padStart(2, '0');
+    return Number(`${start.year}${m}${d}`);
+  }
+  if (anime.seasonYear) {
+    return anime.seasonYear * 10000;
+  }
+  return 99999999;
+}
+
 /**
  * Trie la library par clé.
- * sortKey: 'rating' | 'title' | 'addedAt' | 'progress' | 'status'
+ * sortKey: 'rating' | 'title' | 'addedAt' | 'progress' | 'status' | 'chronological'
  */
 export function sortLibraryBy(library, sortKey) {
   if (!library) return [];
@@ -111,6 +134,25 @@ export function sortLibraryBy(library, sortKey) {
   const STATUS_ORDER = { WATCHING: 0, PLAN_TO_WATCH: 1, COMPLETED: 2 };
 
   switch (sortKey) {
+    case 'chronological':
+      return copy.sort((a, b) => {
+        const titleA = a.title || a.anime_data?.title?.english || a.anime_data?.title?.romaji || a.anime?.title?.english || '';
+        const titleB = b.title || b.anime_data?.title?.english || b.anime_data?.title?.romaji || b.anime?.title?.english || '';
+        const rootA = getFranchiseRoot(titleA);
+        const rootB = getFranchiseRoot(titleB);
+
+        // Si même franchise -> trier par ordre chronologique de sortie (S1 -> S2 -> S3)
+        if (rootA.toLowerCase() === rootB.toLowerCase()) {
+          const dateA = getStartDateVal(a);
+          const dateB = getStartDateVal(b);
+          if (dateA !== dateB) return dateA - dateB;
+          return titleA.localeCompare(titleB, 'fr', { sensitivity: 'base' });
+        }
+
+        // Sinon trier les franchises par ordre alphabétique
+        return rootA.localeCompare(rootB, 'fr', { sensitivity: 'base' });
+      });
+
     case 'rating':
       return copy.sort((a, b) => {
         // Les animés non notés (0) vont à la fin
