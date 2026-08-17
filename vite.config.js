@@ -29,21 +29,34 @@ export default defineConfig({
         orientation: 'portrait',
         icons: [
           {
-            src: 'apple-touch-icon-180x180.png',
+            src: 'assets/pwa/apple-icon-180.png',
             sizes: '180x180',
             type: 'image/png',
             purpose: 'any'
           },
           {
-            src: 'pwa-192x192.png',
+            src: 'assets/pwa/manifest-icon-192.maskable.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'assets/pwa/manifest-icon-192.maskable.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'maskable'
+          },
+          {
+            src: 'assets/pwa/manifest-icon-512.maskable.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
+          },
+          {
+            src: 'assets/pwa/manifest-icon-512.maskable.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ]
       },
