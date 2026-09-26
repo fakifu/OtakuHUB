@@ -263,15 +263,7 @@ export default function LibraryPage() {
 
         {/* Empty state */}
         {displayedLibrary.length === 0 && (
-          <EmptyLibrary
-            hasFilter={hasActiveFilters}
-            onImportBackup={async () => {
-              await importBackupData(importedBackup);
-              if (user) {
-                await pushLocalLibraryToSupabase();
-              }
-            }}
-          />
+          <EmptyLibrary hasFilter={hasActiveFilters} />
         )}
 
         {/* Grille animés — 2 colonnes par écran */}

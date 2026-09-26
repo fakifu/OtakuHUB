@@ -93,16 +93,16 @@ function loadFromStorage() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      return (importedBackup || []).map(normalizeEntry).filter(Boolean);
+      return [];
     }
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) {
-      return (importedBackup || []).map(normalizeEntry).filter(Boolean);
+      return [];
     }
     return parsed.map(normalizeEntry).filter(Boolean);
   } catch (err) {
     console.warn('OtakuHub: Erreur lecture LocalStorage', err);
-    return (importedBackup || []).map(normalizeEntry).filter(Boolean);
+    return [];
   }
 }
 
