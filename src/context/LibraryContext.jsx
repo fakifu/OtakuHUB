@@ -59,7 +59,7 @@ function normalizeEntry(entry) {
   const anime = entry.anime || entry.anime_data || {
     id: entry.animeId || entry.anime_id,
     title: typeof entry.title === 'string'
-      ? { userPreferred: entry.title, romaji: entry.title }
+      ? { english: entry.title, userPreferred: entry.title, romaji: entry.title }
       : entry.title,
     coverImage: typeof entry.coverImage === 'string'
       ? { extraLarge: entry.coverImage, large: entry.coverImage, medium: entry.coverImage }
@@ -72,7 +72,7 @@ function normalizeEntry(entry) {
 
   return {
     animeId: entry.animeId || entry.anime_id || anime.id,
-    title: typeof entry.title === 'string' ? entry.title : (anime.title?.userPreferred || anime.title?.romaji || 'Sans titre'),
+    title: typeof entry.title === 'string' ? entry.title : (anime.title?.english || anime.title?.userPreferred || anime.title?.romaji || 'Sans titre'),
     coverImage: typeof entry.coverImage === 'string' ? entry.coverImage : (anime.coverImage?.extraLarge || anime.coverImage?.large || entry.cover_image || ''),
     bannerImage: entry.bannerImage || anime.bannerImage || null,
     anime,
@@ -275,7 +275,7 @@ export function LibraryProvider({ children }) {
 
     const titleText = typeof animeData.title === 'string'
       ? animeData.title
-      : (animeData?.title?.userPreferred || animeData?.title?.romaji || animeData?.title?.english || 'Sans titre');
+      : (animeData?.title?.english || animeData?.title?.userPreferred || animeData?.title?.romaji || 'Sans titre');
 
     const coverUrl = typeof animeData.coverImage === 'string'
       ? animeData.coverImage

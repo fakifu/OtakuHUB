@@ -78,7 +78,7 @@ export default function AnimeGridCard({ entry, onClick }) {
 
   const titleText = typeof animeObj.title === 'string'
     ? animeObj.title
-    : (animeObj.title?.userPreferred || animeObj.title?.romaji || animeObj.title?.english || entry.title || 'Sans titre');
+    : (animeObj.title?.english || animeObj.title?.userPreferred || animeObj.title?.romaji || entry.title || 'Sans titre');
 
   const totalEpisodes = animeObj.episodes || entry.totalEpisodes || 0;
 

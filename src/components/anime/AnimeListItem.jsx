@@ -39,11 +39,11 @@ export default function AnimeListItem({ anime, onClick, index = 0 }) {
     format,
   } = anime;
 
-  const titleRomaji = title?.romaji || title?.userPreferred || 'Sans titre';
-  const titleEnglish = title?.english;
+  const titleMain = title?.english || title?.userPreferred || title?.romaji || 'Sans titre';
+  const titleSub = title?.romaji;
 
   // Masquer le sous-titre uniquement si le titre principal est très long (> 30 car) pour préserver la hauteur
-  const showEnglishTitle = titleEnglish && titleEnglish !== titleRomaji && titleRomaji.length <= 30;
+  const showSubTitle = titleSub && titleSub !== titleMain && titleMain.length <= 30;
 
   const formatClass = FORMAT_COLORS[format] || FORMAT_COLORS.TV;
   const formatLabel = FORMAT_LABELS[format] || format || 'TV';
@@ -69,12 +69,12 @@ export default function AnimeListItem({ anime, onClick, index = 0 }) {
         {/* En-tête : Titre principal & sous-titre */}
         <div className="min-w-0 space-y-0.5">
           <h3 className="text-foreground font-extrabold text-sm leading-tight line-clamp-2 min-w-0">
-            {titleRomaji}
+            {titleMain}
           </h3>
 
-          {showEnglishTitle && (
+          {showSubTitle && (
             <p className="text-muted text-xs truncate font-medium">
-              {titleEnglish}
+              {titleSub}
             </p>
           )}
         </div>
