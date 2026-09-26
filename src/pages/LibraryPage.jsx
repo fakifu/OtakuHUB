@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, X, Filter, BookOpen, Grid3X3,
   ChevronDown, Star, Clock, Bookmark, CheckCircle, Play,
-  SlidersHorizontal
+  SlidersHorizontal, FolderInput
 } from 'lucide-react';
 
 import AnimeGridCard from '../components/anime/AnimeGridCard';
@@ -12,8 +12,10 @@ import FilterPanel from '../components/anime/FilterPanel';
 import AnimeDetailPage from './AnimeDetailPage';
 import Pill from '../components/ui/Pill';
 import { useLibrary } from '../context/LibraryContext';
+import { useAuth } from '../context/AuthContext';
 import { sortLibraryBy, searchInLibrary } from '../utils/animeStats';
 import { useTranslation } from '../hooks/useTranslation';
+import importedBackup from '../data/imported_backup.json';
 
 // ── FILTER PILL ──────────────────────────────────────────────────────────
 function FilterPill({ label, isActive, onClick, icon: Icon, status }) {
@@ -31,13 +33,13 @@ function FilterPill({ label, isActive, onClick, icon: Icon, status }) {
 }
 
 // ── EMPTY STATE ──────────────────────────────────────────────────────────
-function EmptyLibrary({ hasFilter }) {
+function EmptyLibrary({ hasFilter, onImportBackup }) {
   const { t } = useTranslation();
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col items-center justify-center py-20 px-8 text-center space-y-4"
+      className="flex flex-col items-center justify-center py-16 px-8 text-center space-y-4"
     >
       <div className="relative">
         <div className="w-20 h-20 rounded-[2rem] glass-liquid flex items-center justify-center">
@@ -58,12 +60,23 @@ function EmptyLibrary({ hasFilter }) {
           }
         </p>
       </div>
+
+      {!hasFilter && onImportBackup && (
+        <button
+          onClick={onImportBackup}
+          className="mt-3 px-6 py-3 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow-xl flex items-center gap-2.5 transition-all transform active:scale-95 cursor-pointer"
+        >
+          <FolderInput size={18} />
+          <span>Importer mes 62 animés sauvegardés</span>
+        </button>
+      )}
     </motion.div>
   );
 }
 
 export default function LibraryPage() {
-  const { library, updateEntry, removeFromLibrary, incrementEpisode } = useLibrary();
+  const { library, updateEntry, removeFromLibrary, incrementEpisode, importBackupData, pushLocalLibraryToSupabase } = useLibrary();
+  const { user } = useAuth();
   const { t } = useTranslation();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -250,7 +263,15 @@ export default function LibraryPage() {
 
         {/* Empty state */}
         {displayedLibrary.length === 0 && (
-          <EmptyLibrary hasFilter={hasActiveFilters} />
+          <EmptyLibrary
+            hasFilter={hasActiveFilters}
+            onImportBackup={async () => {
+              await importBackupData(importedBackup);
+              if (user) {
+                await pushLocalLibraryToSupabase();
+              }
+            }}
+          />
         )}
 
         {/* Grille animés — 2 colonnes par écran */}
